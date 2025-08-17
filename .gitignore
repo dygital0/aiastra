@@ -1,0 +1,26 @@
+# Byte-compiled / cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment (don't push env folder)
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+
+# VS Code settings
+.vscode/
+
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+
+# macOS
+.DS_Store
+
+# Trade history (local only)
+trade_history.csv
+
+# System files
+Thumbs.db
