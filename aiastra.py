@@ -188,6 +188,9 @@ if st.session_state.auto_run:
 
 # Suggestions from AI here
 with st.container():
+    # Auto-refresh just for AI suggestions (every 5 sec here)
+    st_autorefresh(interval=5000, key="ai-refresh")
+
     col1, col2, col3 = st.columns([0.02, 0.96, 0.02])
     with col2:
         st.markdown("---")
