@@ -3,6 +3,8 @@ import pandas as pd  # type: ignore
 import numpy as np
 import random
 import os
+import csv
+import io
 from datetime import datetime, timedelta
 from streamlit_autorefresh import st_autorefresh  # type: ignore
 import statsmodels.api as sm  # type: ignore
@@ -21,6 +23,9 @@ if 'auto_run' not in st.session_state:
     st.session_state.auto_run = False
 if 'uploaded_symbol' not in st.session_state:
     st.session_state.uploaded_symbol = "CSV"
+# store only simulated rows (for download)
+if 'simulated_rows' not in st.session_state:
+    st.session_state.simulated_rows = []
 
 # csv loader
 REQUIRED_COLS = ["Date", "Open", "High", "Low", "Close", "Volume"]
@@ -71,6 +76,16 @@ def simulate_market_move():
         new_row.name = new_row.name + timedelta(days=1)
         st.session_state.data = pd.concat([st.session_state.data, pd.DataFrame([new_row])])
         st.write(f"📌 Simulated new price: ${new_close:.2f}")
+
+        # ---- collect ONLY simulated rows for download using csv module format ----
+        # Build one row with "Date, Open, High, Low, Close, Volume"
+        date_str = new_row.name.strftime("%Y-%m-%d")
+        open_v = float(new_row.get('Open', new_close))
+        high_v = float(new_row.get('High', max(open_v, new_close)))
+        low_v  = float(new_row.get('Low',  min(open_v, new_close)))
+        close_v = float(new_row['Close'])
+        vol_v = int(float(new_row.get('Volume', 0)))
+        st.session_state.simulated_rows.append([date_str, open_v, high_v, low_v, close_v, vol_v])
 
 # AI SUGGESTION using SMA, EMA, WMA and SARIMAX
 @st.cache_resource(show_spinner=False)
@@ -166,6 +181,8 @@ if st.sidebar.button("Load Data"):
         else:
             st.session_state.data = data
             st.session_state.uploaded_symbol = os.path.splitext(uploaded_csv.name)[0]
+            # reset simulated-only buffer when new data is loaded
+            st.session_state.simulated_rows = []
 
 # Line Chart here
 if st.session_state.data is not None and not st.session_state.data.empty:
@@ -174,13 +191,26 @@ else:
     st.write("⬅ Upload & Load CSV to see chart.")
 
 # Auto Simulation here
-col1, col2 = st.columns(2)
+col1, col2, col3 = st.columns(3)
 with col1:
     if st.button("Start Auto Simulation"):
         st.session_state.auto_run = True
 with col2:
     if st.button("Stop Auto Simulation"):
         st.session_state.auto_run = False
+with col3:
+    # Build downloadable CSV (simulated rows only) using csv module
+    if st.session_state.simulated_rows:
+        buffer = io.StringIO()
+        writer = csv.writer(buffer)
+        writer.writerow(["Date", "Open", "High", "Low", "Close", "Volume"])
+        writer.writerows(st.session_state.simulated_rows)
+        st.download_button(
+            "Download Simulated Data",
+            data=buffer.getvalue().encode("utf-8"),
+            file_name="simulated_data.csv",
+            mime="text/csv"
+        )
 
 if st.session_state.auto_run:
     st_autorefresh(interval=2000, limit=None, key="sim-refresh")
